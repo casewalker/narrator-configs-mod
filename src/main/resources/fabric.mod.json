@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "narratorconfigsmod",
+  "version": "${version}",
+
+  "name": "Narrator Configs Mod",
+  "description": "A mod to give granular control to users over exactly which narrations they want to have narrated.",
+
+  "authors": [
+    "case_walker"
+  ],
+  "contact": {
+    "homepage": "https://github.com/casewalker"
+  },
+
+  "license": "MIT",
+  "icon": "assets/narratorconfigsmod/icon.png",
+
+  "environment": "client",
+  "entrypoints": {
+    "main": [
+      "com.casewalker.narratorconfigs.NarratorConfigsMod"
+    ]
+  },
+  "mixins": [
+    "narratorconfigsmod.mixins.json"
+  ],
+
+  "depends": {
+    "fabricloader": ">=0.11.3",
+    "fabric": "*",
+    "minecraft": "1.17.x",
+    "java": ">=16"
+  },
+  "suggests": {
+    "another-mod": "*"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "enabled": true,
+  "chatEnabled": true,
+
+  "enabledPrefixes": [
+    "multiplayer.player.",
+    "commands.message.display.",
+    "chat.type.advancement.",
+    "death.",
+    "sleep."
+  ]
+}

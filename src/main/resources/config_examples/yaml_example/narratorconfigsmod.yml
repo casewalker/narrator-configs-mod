@@ -1,0 +1,18 @@
+## Configurations for the mod
+
+# Enable the mod so that mod-effects occur
+modEnabled: yes
+# Enable chat so that chat messages are narrated
+chatEnabled: yes
+# Enable specific system messages based on matching their keys' prefixes in the Minecraft language files:
+enabledPrefixes:
+  # match the "joined", "joined (renamed)", and "left" multiplayer messages
+  - multiplayer.player.
+  # match incoming and outgoing whispers
+  - commands.message.display.
+  # match when a player completes advancements, challenges, and goals
+  - chat.type.advancement.
+  # match all player death messages
+  - death.
+  # match messages related to player sleep
+  - sleep.

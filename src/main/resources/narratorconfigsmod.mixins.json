@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.casewalker.narratorconfigs.mixin",
+  "compatibilityLevel": "JAVA_16",
+  "client": [
+    "NarratorManagerMixin",
+    "TranslationStorageMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
