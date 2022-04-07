@@ -19,7 +19,7 @@ system messages that come through the chat display. I have created a simple mod 
 in ways that are not covered by the above options.
 
 This mod attempts to give fine-grained control to Minecraft players to define exactly which narrations they want to hear
-and which they do not.
+and which they do not. Note that this mod is built on top of [Fabric](https://fabricmc.net/).
 
 ## Configuration
 
