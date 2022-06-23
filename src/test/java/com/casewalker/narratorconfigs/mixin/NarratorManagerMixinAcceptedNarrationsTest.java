@@ -25,29 +25,22 @@ package com.casewalker.narratorconfigs.mixin;
 
 import com.casewalker.modutils.config.ConfigHandler;
 import com.casewalker.narratorconfigs.config.NarratorConfigsModConfig;
-import com.mojang.text2speech.Narrator;
 import net.minecraft.client.resource.language.TranslationStorage;
-import net.minecraft.text.Text;
 import net.minecraft.util.Language;
-import net.minecraft.util.Pair;
 import org.easymock.EasyMock;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.powermock.reflect.Whitebox;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
-import static net.minecraft.network.MessageType.CHAT;
+import static com.casewalker.narratorconfigs.testutils.TestUtils.NarratorManagerMixinTestImpl;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -55,16 +48,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Test functionality within the {@link NarratorManagerMixin}.
+ * Tests on the {@link NarratorManagerMixin} for the {@link NarratorManagerMixin#pullTranslationsFromLanguage()} and
+ * {@link NarratorManagerMixin#createAcceptedNarrations(Map)} functionality.
  *
  * @author Case Walker
  */
-class NarratorManagerMixinTest {
+class NarratorManagerMixinAcceptedNarrationsTest {
 
     private static final NarratorManagerMixinTestImpl narratorManagerMixin = new NarratorManagerMixinTestImpl();
+
     private static final ConfigHandler<NarratorConfigsModConfig> config =
             new ConfigHandler<>(NarratorConfigsModConfig.class);
-    private static final UUID UUID_VALUE = UUID.fromString("12345678-1234-1234-1234-123456789012");
 
     @BeforeAll
     static void initializeDependencies() {
@@ -74,7 +68,6 @@ class NarratorManagerMixinTest {
 
     @BeforeEach
     void resetConfig() {
-        config.get().setModEnabled(false);
         config.get().setChatEnabled(false);
         config.get().setEnabledPrefixes(null);
         config.get().setDisabledPrefixes(null);
@@ -89,7 +82,7 @@ class NarratorManagerMixinTest {
 
         Language.setInstance(languageMock);
 
-        final Map<String, String> translations = narratorManagerMixin.pullTranslationsFromLanguage();
+        Map<String, String> translations = narratorManagerMixin.pullTranslationsFromLanguage();
         assertNotNull(translations, "Translations should not be null");
         assertTrue(translations.isEmpty(), "Translations should be empty from non TranslationStorage language");
     }
@@ -114,12 +107,13 @@ class NarratorManagerMixinTest {
         Map<String, String> translations = Map.of("a", "A", "a.1", "X", "b", "B", "c", "C");
 
         Set<Pattern> patterns = narratorManagerMixin.createAcceptedNarrations(translations);
+
         assertNotNull(patterns, "Patterns should not be null");
         assertEquals(2, patterns.size(), "There should only be two returned patterns");
-        assertTrue(patterns.stream().anyMatch(p -> p.matcher("A").matches()), "The patterns should match 'A'");
-        assertTrue(patterns.stream().anyMatch(p -> p.matcher("X").matches()), "The patterns should match 'X'");
-        assertFalse(patterns.stream().anyMatch(p -> p.matcher("B").matches()), "The patterns should not match 'B'");
-        assertFalse(patterns.stream().anyMatch(p -> p.matcher("C").matches()), "The patterns should not match 'C'");
+        assertTrue(narratorManagerMixin.narrationIsAccepted(patterns, "A"), "The patterns should match 'A'");
+        assertTrue(narratorManagerMixin.narrationIsAccepted(patterns, "X"), "The patterns should match 'X'");
+        assertFalse(narratorManagerMixin.narrationIsAccepted(patterns, "B"), "The patterns should not match 'B'");
+        assertFalse(narratorManagerMixin.narrationIsAccepted(patterns, "C"), "The patterns should not match 'C'");
     }
 
     @Test
@@ -130,11 +124,12 @@ class NarratorManagerMixinTest {
         Map<String, String> translations = Map.of("a.1", "A1", "a.2", "A2", "a.3", "A3");
 
         Set<Pattern> patterns = narratorManagerMixin.createAcceptedNarrations(translations);
+
         assertNotNull(patterns, "Patterns should not be null");
         assertEquals(2, patterns.size(), "There should be two returned patterns");
-        assertTrue(patterns.stream().anyMatch(p -> p.matcher("A1").matches()), "The patterns should match 'A1'");
-        assertTrue(patterns.stream().anyMatch(p -> p.matcher("A3").matches()), "The patterns should match 'A3'");
-        assertFalse(patterns.stream().anyMatch(p -> p.matcher("A2").matches()), "The patterns should not match 'A2'");
+        assertTrue(narratorManagerMixin.narrationIsAccepted(patterns, "A1"), "The patterns should match 'A1'");
+        assertTrue(narratorManagerMixin.narrationIsAccepted(patterns, "A3"), "The patterns should match 'A3'");
+        assertFalse(narratorManagerMixin.narrationIsAccepted(patterns, "A2"), "The patterns should not match 'A2'");
     }
 
     @Test
@@ -144,9 +139,10 @@ class NarratorManagerMixinTest {
         Map<String, String> translations = Map.of("a.1", "A1", "a.2", "A2", "a.3", "A3");
 
         Set<Pattern> patterns = narratorManagerMixin.createAcceptedNarrations(translations);
+
         assertNotNull(patterns, "Patterns should not be null");
         assertEquals(1, patterns.size(), "There should be one returned pattern");
-        assertTrue(patterns.stream().anyMatch(p -> p.matcher("test string only").matches()),
+        assertTrue(narratorManagerMixin.narrationIsAccepted(patterns, "test string only"),
                 "The patterns should match 'test string only'");
     }
 
@@ -159,8 +155,9 @@ class NarratorManagerMixinTest {
         Map<String, String> translations = Map.of("a", complicatedValue);
 
         Set<Pattern> patterns = narratorManagerMixin.createAcceptedNarrations(translations);
+
         assertNotNull(patterns, "Patterns should not be null");
-        assertTrue(patterns.stream().anyMatch(p -> p.matcher(complicatedValue).matches()),
+        assertTrue(narratorManagerMixin.narrationIsAccepted(patterns, complicatedValue),
                 "The pattern should match: " + complicatedValue);
     }
 
@@ -174,15 +171,16 @@ class NarratorManagerMixinTest {
         );
 
         Set<Pattern> patterns = narratorManagerMixin.createAcceptedNarrations(translations);
-        assertTrue(patterns.stream().anyMatch(p -> p.matcher("Screen element 'banana' out of 25").matches()),
+
+        assertTrue(narratorManagerMixin.narrationIsAccepted(patterns, "Screen element 'banana' out of 25"),
                 "The patterns should match a version of the screen-element translation");
-        assertTrue(patterns.stream().anyMatch(p -> p.matcher("Screen element 64 out of foobar").matches()),
+        assertTrue(narratorManagerMixin.narrationIsAccepted(patterns, "Screen element 64 out of foobar"),
                 "The patterns should match another version of the screen-element translation");
-        assertTrue(patterns.stream().anyMatch(p ->
-                        p.matcher("case_walker suffocated in a wall whilst fighting houdini").matches()),
+        assertTrue(narratorManagerMixin.
+                        narrationIsAccepted(patterns, "case_walker suffocated in a wall whilst fighting houdini"),
                 "The patterns should match a version of the death translation");
-        assertTrue(patterns.stream().anyMatch(p ->
-                        p.matcher("John_Doe suffocated in a wall whilst fighting case_walker").matches()),
+        assertTrue(narratorManagerMixin.
+                        narrationIsAccepted(patterns, "John_Doe suffocated in a wall whilst fighting case_walker"),
                 "The patterns should match another version of the death translation");
     }
 
@@ -193,82 +191,12 @@ class NarratorManagerMixinTest {
         Map<String, String> translations = Map.of("a", "It should match this sentence");
 
         Set<Pattern> patterns = narratorManagerMixin.createAcceptedNarrations(translations);
-        assertTrue(patterns.stream().anyMatch(p -> p.matcher("It should match this sentence").matches()),
+
+        assertTrue(narratorManagerMixin.narrationIsAccepted(patterns, "It should match this sentence"),
                 "Exact match should work");
-        assertFalse(patterns.stream().anyMatch(p -> p.matcher("abcIt should match this sentence").matches()),
+        assertFalse(narratorManagerMixin.narrationIsAccepted(patterns, "abcIt should match this sentence"),
                 "Match with extra characters prepended should not work");
-        assertFalse(patterns.stream().anyMatch(p -> p.matcher("It should match this sentence, well not now").matches()),
-                "Match with extra characters postfixed should not work");
-    }
-
-    @Test
-    @DisplayName("Nothing is narrated if the mod is disabled (onOnChatMessage, onNarrate)")
-    public void testModDisabled() {
-        config.get().setChatEnabled(true);
-        DummyNarrator narrator = new DummyNarrator();
-        narrator.active = true;
-        narratorManagerMixin.setNarrator(narrator);
-
-        narratorManagerMixin.onNarrate("text1", new CallbackInfo("test", true));
-        narratorManagerMixin.onOnChatMessage(CHAT, Text.of("text2"), UUID_VALUE, new CallbackInfo("test", true));
-
-        assertTrue(narrator.thingsSaid.isEmpty(),
-                "Narrator should not get any narrations if mod is disabled: " +
-                        narrator.thingsSaid.stream().map(Pair::getLeft).collect(Collectors.toList()));
-    }
-
-    @Test
-    @DisplayName("Nothing is narrated if the narrator is not active (onOnChatMessage, onNarrate)")
-    public void testNarratorInactive() {
-        config.get().setModEnabled(true);
-        config.get().setChatEnabled(true);
-        DummyNarrator narrator = new DummyNarrator();
-        narrator.active = false;
-        narratorManagerMixin.setNarrator(narrator);
-
-        narratorManagerMixin.onNarrate("text1", new CallbackInfo("test", true));
-        narratorManagerMixin.onOnChatMessage(CHAT, Text.of("text2"), UUID_VALUE, new CallbackInfo("test", true));
-
-        assertTrue(narrator.thingsSaid.isEmpty(),
-                "Narrator should not get any narrations when narrator is not active: " +
-                        narrator.thingsSaid.stream().map(Pair::getLeft).collect(Collectors.toList()));
-    }
-
-    @Test
-    @DisplayName("Chat narration succeeds (interrupt false) if the mod and chat are enabled (onOnChatMessage)")
-    public void testChatSucceeds() {
-        config.get().setModEnabled(true);
-        config.get().setChatEnabled(true);
-        DummyNarrator narrator = new DummyNarrator();
-        narrator.active = true;
-        narratorManagerMixin.setNarrator(narrator);
-        CallbackInfo ci = new CallbackInfo("test", true);
-
-        narratorManagerMixin.onOnChatMessage(CHAT, Text.of("text"), UUID_VALUE, ci);
-
-        assertEquals(1, narrator.thingsSaid.size(), "Narrator should have received 1 narration");
-        assertFalse(narrator.thingsSaid.get(0).getRight(), "Interrupt should be false for chat message");
-        assertTrue(ci.isCancelled(), "CallbackInfo should become canceled if chat is narrated");
-    }
-
-    /**
-     * Concrete implementation for the {@link NarratorManagerMixin} abstract class.
-     */
-    private static class NarratorManagerMixinTestImpl extends NarratorManagerMixin {
-        void debugPrintMessage(String var1) {}
-        void setNarrator(Narrator narrator) { Whitebox.setInternalState(this, "narrator", narrator); }
-    }
-
-    /**
-     * Class to mock the narrator.
-     */
-    private static class DummyNarrator implements Narrator {
-        public boolean active;
-        public List<Pair<String, Boolean>> thingsSaid = new ArrayList<>();
-
-        public void say(String msg, boolean interrupt) { thingsSaid.add(new Pair<>(msg, interrupt)); }
-        public void clear() {}
-        public boolean active() { return active; }
-        public void destroy() {}
+        assertFalse(narratorManagerMixin.narrationIsAccepted(patterns, "It should match this sentence, well not now"),
+                "Match with extra characters post-fixed should not work");
     }
 }

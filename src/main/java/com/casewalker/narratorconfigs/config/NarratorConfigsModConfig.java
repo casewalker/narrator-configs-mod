@@ -43,7 +43,6 @@ public class NarratorConfigsModConfig extends AbstractConfig {
     private static final Path DEFAULT_YAML_CONFIG = Path.of("config", BASE_FILENAME + ".yml");
     private static final Path OTHER_DEFAULT_YAML_CONFIG = Path.of("config", BASE_FILENAME + ".yaml");
 
-    private boolean modEnabled;
     private boolean chatEnabled;
     private List<String> enabledPrefixes;
     private List<String> disabledPrefixes;
@@ -60,24 +59,23 @@ public class NarratorConfigsModConfig extends AbstractConfig {
         if (o == null || getClass() != o.getClass()) return false;
         NarratorConfigsModConfig that = (NarratorConfigsModConfig) o;
         // Determine equality based on just the config properties
-        return modEnabled == that.modEnabled && chatEnabled == that.chatEnabled &&
+        return chatEnabled == that.chatEnabled &&
                 Objects.equals(enabledPrefixes, that.enabledPrefixes) &&
                 Objects.equals(disabledPrefixes, that.disabledPrefixes) &&
                 Objects.equals(enabledRegularExpressions, that.enabledRegularExpressions);
     }
 
     /**
-     * Provide a string representation of the configuration which can be narrated to the player.
+     * Provide a string representation of the configuration which can also be narrated by the narrator.
      *
      * @return The string representation of the config
      */
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("Narrator Configs Mod Configuration: The mod is ");
-        sb.append(modEnabled ? "enabled" : "disabled");
-        sb.append(", Chat is ");
+        final StringBuilder sb = new StringBuilder("Narrator Configs Mod Configuration: Chat is ");
         sb.append(chatEnabled ? "enabled" : "disabled");
         sb.append(", ");
+
         if (enabledPrefixes == null || enabledPrefixes.isEmpty()) {
             sb.append("No prefixes are enabled");
         } else {
@@ -85,6 +83,7 @@ public class NarratorConfigsModConfig extends AbstractConfig {
             sb.append(enabledPrefixes);
         }
         sb.append(", ");
+
         if (disabledPrefixes == null || disabledPrefixes.isEmpty()) {
             sb.append("No prefixes are disabled");
         } else {
@@ -92,6 +91,7 @@ public class NarratorConfigsModConfig extends AbstractConfig {
             sb.append(disabledPrefixes);
         }
         sb.append( ", and ");
+
         if (enabledRegularExpressions == null || enabledRegularExpressions.isEmpty()) {
             sb.append("No regular expressions are enabled");
         } else {
@@ -99,11 +99,8 @@ public class NarratorConfigsModConfig extends AbstractConfig {
             sb.append(enabledRegularExpressions);
         }
         sb.append(".");
-        return sb.toString();
-    }
 
-    public boolean isModEnabled() {
-        return modEnabled;
+        return sb.toString();
     }
 
     public boolean isChatEnabled() {
@@ -121,10 +118,6 @@ public class NarratorConfigsModConfig extends AbstractConfig {
     public List<String> getEnabledRegularExpressions() {
         return enabledRegularExpressions == null ?
                 Collections.emptyList() : Collections.unmodifiableList(enabledRegularExpressions);
-    }
-
-    public void setModEnabled(final boolean modEnabled) {
-        this.modEnabled = modEnabled;
     }
 
     public void setChatEnabled(final boolean chatEnabled) {

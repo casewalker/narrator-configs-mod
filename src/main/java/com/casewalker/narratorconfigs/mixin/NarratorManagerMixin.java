@@ -27,8 +27,10 @@ import com.casewalker.modutils.config.ConfigHandler;
 import com.casewalker.narratorconfigs.config.NarratorConfigsModConfig;
 import com.casewalker.narratorconfigs.interfaces.AccessibleTranslationStorage;
 import com.casewalker.modutils.interfaces.Reloadable;
+import com.casewalker.narratorconfigs.util.Util;
 import com.google.common.annotations.VisibleForTesting;
 import com.mojang.text2speech.Narrator;
+import net.minecraft.client.option.NarratorMode;
 import net.minecraft.client.resource.language.TranslationStorage;
 import net.minecraft.client.util.NarratorManager;
 import net.minecraft.network.MessageType;
@@ -76,7 +78,23 @@ public abstract class NarratorManagerMixin implements Reloadable {
     private Narrator narrator;
 
     @Shadow
-    abstract void debugPrintMessage(String var1);
+    protected abstract void debugPrintMessage(String var1);
+
+    @Shadow
+    private static NarratorMode getNarratorOption() {
+        throw new AssertionError("Shadowed method wrapper 'getNarratorOption' should not run");
+    }
+
+    /**
+     * Wrapper method to make testing easy and provide the answer this mod cares about, whether the current narrator
+     * option is equal to the CUSTOM_NARRATION mode.
+     *
+     * @return The result of {@link #getNarratorOption()} == CUSTOM_NARRATION
+     */
+    @VisibleForTesting
+    protected boolean narratorModeIsCustomNarration() {
+        return getNarratorOption().equals(Util.customNarration());
+    }
 
     /**
      * Set of acceptable narrations based on the configured enabled prefixes.
@@ -148,12 +166,12 @@ public abstract class NarratorManagerMixin implements Reloadable {
             final UUID sender,
             final CallbackInfo ci) {
 
-        // If the mod is not enabled, exit
-        if (!config.get().isModEnabled()) {
+        // If the narrator mode is not CUSTOM_NARRATION, exit and run the underlying Minecraft method
+        if (!narratorModeIsCustomNarration()) {
             return;
         }
 
-        // Copied largely from NarratorManager#onChatMessage
+        // Code copied mostly verbatim from NarratorManager#onChatMessage
         if (!narrator.active()) {
             debugPrintMessage(message.getString());
 
@@ -172,10 +190,10 @@ public abstract class NarratorManagerMixin implements Reloadable {
 
                 // Hard-code `interrupt == false`, losing chat messages due to interrupt is not nice
                 narrator.say(string, false);
-                // If the mixin has narrated the chat, then cancel the call to NarratorManager#onChatMessage
-                ci.cancel();
             }
         }
+        // If the mixin was called with the right NarratorMode, then cancel the call to NarratorManager#onChatMessage
+        ci.cancel();
     }
 
     /**
@@ -187,8 +205,8 @@ public abstract class NarratorManagerMixin implements Reloadable {
     @Inject(method = "narrate(Ljava/lang/String;)V", at = @At("HEAD"), cancellable = true)
     public void onNarrate(final String text, final CallbackInfo ci) {
 
-        // If the mod is not enabled, exit
-        if (!config.get().isModEnabled()) {
+        // If the narrator mode is not CUSTOM_NARRATION, exit and run the underlying Minecraft method
+        if (!narratorModeIsCustomNarration()) {
             return;
         }
 
@@ -198,10 +216,10 @@ public abstract class NarratorManagerMixin implements Reloadable {
             if (narrator.active()) {
                 narrator.clear();
                 narrator.say(text, true);
-                // If the mixin has narrated the text, then cancel the call to NarratorManager#narrate
-                ci.cancel();
             }
         }
+        // If the mixin was called with the right NarratorMode, then cancel the call to NarratorManager#narrate
+        ci.cancel();
     }
 
     /**
@@ -226,7 +244,7 @@ public abstract class NarratorManagerMixin implements Reloadable {
      * as en_us.json
      */
     @VisibleForTesting
-    Map<String, String> pullTranslationsFromLanguage() {
+    protected Map<String, String> pullTranslationsFromLanguage() {
         final Language language = Language.getInstance();
         if (!(language instanceof TranslationStorage)) {
             LOGGER.error("Language is not an instance of {}, {} will not work correctly when using prefixes",
@@ -246,26 +264,26 @@ public abstract class NarratorManagerMixin implements Reloadable {
      * @return Translations combined and manipulated based on configurations
      */
     @VisibleForTesting
-    Set<Pattern> createAcceptedNarrations(final Map<String, String> translations) {
+    protected Set<Pattern> createAcceptedNarrations(final Map<String, String> translations) {
 
         final Set<Pattern> output = translations.entrySet().stream()
-                .filter(
-                        entry -> config.get().getEnabledPrefixes().stream()
-                                .anyMatch(enabledPrefix -> entry.getKey().startsWith(enabledPrefix))
-                )
-                .filter(
-                        entry -> config.get().getDisabledPrefixes().stream()
-                                .noneMatch(disabledPrefix -> entry.getKey().startsWith(disabledPrefix))
-                )
+                // filter in all enabled prefixes
+                .filter(entry -> config.get().getEnabledPrefixes().stream()
+                                .anyMatch(enabledPrefix -> entry.getKey().startsWith(enabledPrefix)))
+                // filter out any disabled prefixes
+                .filter(entry -> config.get().getDisabledPrefixes().stream()
+                                .noneMatch(disabledPrefix -> entry.getKey().startsWith(disabledPrefix)))
                 .map(Map.Entry::getValue)
-                // escape all special characters
+                // escape all special characters in the language translations
                 .map(translation -> translation.replaceAll("([]\\[.()^$*+?{}|])", "\\\\$1"))
-                // replace all placeholders (accounting for escapes added above)
+                // replace all placeholders (accounting for escapes added above) like '%s' with the regex '.*'
                 .map(translation -> translation.replaceAll("%(\\d+[\\\\][$])?[sd]", ".*"))
+                // encase the string as a pattern with a beginning and end, then finally Pattern.compile() and collect
                 .map(translationPattern -> "^" + translationPattern + "$")
                 .map(Pattern::compile)
                 .collect(Collectors.toSet());
 
+        // add all configured Enabled Regular Expressions to the accepted narration matchers
         output.addAll(
                 config.get().getEnabledRegularExpressions().stream().map(Pattern::compile).collect(Collectors.toList())
         );
@@ -281,6 +299,18 @@ public abstract class NarratorManagerMixin implements Reloadable {
      * @return Whether the narration is accepted
      */
     private boolean narrationIsAccepted(final String string) {
+        return narrationIsAccepted(acceptedNarrations, string);
+    }
+
+    /**
+     * See {@link #narrationIsAccepted(String)}.
+     *
+     * @param acceptedNarrations Patterns to check the message against
+     * @param string Message to possibly be narrated
+     * @return Whether the narration is accepted
+     */
+    @VisibleForTesting
+    protected boolean narrationIsAccepted(final Set<Pattern> acceptedNarrations, final String string) {
         return acceptedNarrations.stream().anyMatch(pattern -> pattern.matcher(string).matches());
     }
 }
