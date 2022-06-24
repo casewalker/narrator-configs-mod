@@ -23,9 +23,10 @@
  */
 package com.casewalker.narratorconfigs.testutils;
 
-import com.casewalker.narratorconfigs.mixin.NarratorManagerMixin;
+import com.casewalker.narratorconfigs.mixin.NarratorManagerMixinNCM2;
 import com.mojang.text2speech.Narrator;
 import net.minecraft.util.Pair;
+import org.junit.Assert;
 import org.powermock.reflect.Whitebox;
 
 import java.util.ArrayList;
@@ -39,9 +40,9 @@ import java.util.List;
 public class TestUtils {
 
     /**
-     * Concrete implementation for the {@link NarratorManagerMixin} abstract class.
+     * Concrete implementation for the {@link NarratorManagerMixinNCM2} abstract class.
      */
-    public static class NarratorManagerMixinTestImpl extends NarratorManagerMixin {
+    public static class NarratorManagerMixinTestImpl extends NarratorManagerMixinNCM2 {
         protected void debugPrintMessage(String var1) {}
         public void setNarrator(Narrator narrator) { Whitebox.setInternalState(this, "narrator", narrator); }
     }
@@ -58,5 +59,19 @@ public class TestUtils {
         public boolean active() { return active; }
         public void destroy() {}
         public void reset() { thingsSaid.clear(); active = false; }
+    }
+
+    /**
+     * Invert the assertion because JUnit5 inverts the arguments and it is better.
+     */
+    public static void assertTrue(boolean b, String s) {
+        Assert.assertTrue(s, b);
+    }
+
+    /**
+     * Invert the assertion because JUnit5 inverts the arguments and it is better.
+     */
+    public static void assertFalse(boolean b, String s) {
+        Assert.assertFalse(s, b);
     }
 }

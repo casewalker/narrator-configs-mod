@@ -40,7 +40,7 @@ import org.spongepowered.asm.mixin.gen.Invoker;
  */
 @Mixin(NarratorMode.class)
 @Unique
-public abstract class NarratorModeMixin {
+public abstract class NarratorModeMixinNCM2 {
 
     /**
      * Private class extending the {@link NarratorModeMixinHelperParent} to connect the {@link
@@ -54,7 +54,7 @@ public abstract class NarratorModeMixin {
                 final int internalId,
                 final int id,
                 final String name) {
-            return NarratorModeMixin.invokeInit(internalName, internalId, id, name);
+            return NarratorModeMixinNCM2.invokeInitNCM2(internalName, internalId, id, name);
         }
     }
 
@@ -90,7 +90,7 @@ public abstract class NarratorModeMixin {
      * Invoke the constructor of the {@link NarratorMode} enum.
      */
     @Invoker("<init>")
-    public static NarratorMode invokeInit(
+    public static NarratorMode invokeInitNCM2(
             final String internalName,
             final int internalId,
             final int id,
@@ -101,8 +101,8 @@ public abstract class NarratorModeMixin {
     /**
      * Call the method {@link
      * NarratorModeMixinHelperParent#addNarratorMode(NarratorMode[], NarratorMode[], String, int, String)} and handle
-     * its output correctly by overwriting the values of {@link NarratorModeMixin#VALUES} and {@link
-     * NarratorModeMixin#field_18183} and then returning the newly created {@link NarratorMode}.
+     * its output correctly by overwriting the values of {@link NarratorModeMixinNCM2#VALUES} and {@link
+     * NarratorModeMixinNCM2#field_18183} and then returning the newly created {@link NarratorMode}.
      *
      * @param internalName See {@link
      * NarratorModeMixinHelperParent#addNarratorMode(NarratorMode[], NarratorMode[], String, int, String)}

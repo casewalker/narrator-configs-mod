@@ -48,8 +48,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests on the {@link NarratorManagerMixin} for the {@link NarratorManagerMixin#pullTranslationsFromLanguage()} and
- * {@link NarratorManagerMixin#createAcceptedNarrations(Map)} functionality.
+ * Tests on the {@link NarratorManagerMixinNCM2} for the {@link NarratorManagerMixinNCM2#pullTranslationsFromLanguage()} and
+ * {@link NarratorManagerMixinNCM2#createAcceptedNarrations(Map)} functionality.
  *
  * @author Case Walker
  */
@@ -79,10 +79,10 @@ class NarratorManagerMixinAcceptedNarrationsTest {
     void testNonTranslationStorageReturnsEmptyMap() {
         Language languageMock = EasyMock.createMock(Language.class);
         EasyMock.replay(languageMock);
-
         Language.setInstance(languageMock);
 
         Map<String, String> translations = narratorManagerMixin.pullTranslationsFromLanguage();
+
         assertNotNull(translations, "Translations should not be null");
         assertTrue(translations.isEmpty(), "Translations should be empty from non TranslationStorage language");
     }
@@ -93,7 +93,6 @@ class NarratorManagerMixinAcceptedNarrationsTest {
     void testTranslationStorageThrowsClassCastException() {
         TranslationStorage translationStorageMock = EasyMock.createMock(TranslationStorage.class);
         EasyMock.replay(translationStorageMock);
-
         Language.setInstance(translationStorageMock);
 
         assertThrows(ClassCastException.class, narratorManagerMixin::pullTranslationsFromLanguage,

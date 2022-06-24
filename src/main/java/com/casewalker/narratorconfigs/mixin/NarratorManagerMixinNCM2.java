@@ -33,10 +33,11 @@ import com.mojang.text2speech.Narrator;
 import net.minecraft.client.option.NarratorMode;
 import net.minecraft.client.resource.language.TranslationStorage;
 import net.minecraft.client.util.NarratorManager;
-import net.minecraft.network.MessageType;
+import net.minecraft.network.message.MessageSender;
+import net.minecraft.network.message.MessageType;
 import net.minecraft.text.Text;
-import net.minecraft.text.TranslatableText;
 import net.minecraft.util.Language;
+import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -46,12 +47,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.casewalker.narratorconfigs.NarratorConfigsMod.LOGGER;
 import static com.casewalker.narratorconfigs.NarratorConfigsMod.MOD_NAME;
+import static net.minecraft.network.message.MessageType.NarrationRule.Kind.CHAT;
+import static net.minecraft.network.message.MessageType.NarrationRule.Kind.SYSTEM;
 
 /**
  * Mixin targeting the {@link NarratorManager} class to allow users to have more fine-grained control over what text is
@@ -72,7 +74,7 @@ import static com.casewalker.narratorconfigs.NarratorConfigsMod.MOD_NAME;
  * @author Case Walker
  */
 @Mixin(NarratorManager.class)
-public abstract class NarratorManagerMixin implements Reloadable {
+public abstract class NarratorManagerMixinNCM2 implements Reloadable {
 
     @Shadow
     private Narrator narrator;
@@ -126,7 +128,7 @@ public abstract class NarratorManagerMixin implements Reloadable {
      */
     @SuppressWarnings("BusyWait")
     @Inject(method = "<init>*", at = @At("RETURN"))
-    public void onInit(final CallbackInfo ci) {
+    public void onInitNCM2(final CallbackInfo ci) {
         LOGGER.info("This line is printed by the Narrator Configs Mod mixin!");
 
         config = new ConfigHandler<>(NarratorConfigsModConfig.class);
@@ -151,19 +153,19 @@ public abstract class NarratorManagerMixin implements Reloadable {
     }
 
     /**
-     * Inject a narration override at the head of {@link NarratorManager#onChatMessage(MessageType, Text, UUID)}.
+     * Inject a narration override at the head of {@link
+     * NarratorManager#onChatMessage(MessageType, Text, MessageSender)}.
      *
-     * @param messageType Metadata about the narration text
-     * @param message     Text to optionally narrate from the Minecraft chat
-     * @param sender      Unused parameter from NarratorManager
-     * @param ci          {@link CallbackInfo} used by SpongePowered
+     * @param type Metadata about the narration text
+     * @param message Text to optionally narrate from the Minecraft chat
+     * @param sender Unused parameter from NarratorManager
+     * @param ci {@link CallbackInfo} used by SpongePowered
      */
-    @SuppressWarnings("CastCanBeRemovedNarrowingVariableType")
     @Inject(method = "onChatMessage", at = @At("HEAD"), cancellable = true)
-    public void onOnChatMessage(
-            final MessageType messageType,
+    public void onOnChatMessageNCM2(
+            final MessageType type,
             final Text message,
-            final UUID sender,
+            final @Nullable MessageSender sender,
             final CallbackInfo ci) {
 
         // If the narrator mode is not CUSTOM_NARRATION, exit and run the underlying Minecraft method
@@ -172,26 +174,20 @@ public abstract class NarratorManagerMixin implements Reloadable {
         }
 
         // Code copied mostly verbatim from NarratorManager#onChatMessage
-        if (!narrator.active()) {
-            debugPrintMessage(message.getString());
-
+        if (!this.narrator.active()) {
+            this.debugPrintMessage(message.getString());
         } else {
-            final Object text2;
-            if (message instanceof TranslatableText && "chat.type.text".equals(((TranslatableText) message).getKey())) {
-                text2 = new TranslatableText("chat.type.text.narrate", ((TranslatableText) message).getArgs());
-            } else {
-                text2 = message;
-            }
-            final String string = ((Text) text2).getString();
-            debugPrintMessage(string);
-
-            if ((messageType.equals(MessageType.CHAT) && config.get().isChatEnabled()) ||
-                    (messageType.equals(MessageType.SYSTEM) && narrationIsAccepted(string))) {
-
-                // Hard-code `interrupt == false`, losing chat messages due to interrupt is not nice
-                narrator.say(string, false);
-            }
+            type.narration().ifPresent((narrationRule) -> {
+                Text text2 = narrationRule.apply(message, sender);
+                String string = text2.getString();
+                if (narrationRule.kind().equals(CHAT) && config.get().isChatEnabled() ||
+                        narrationRule.kind().equals(SYSTEM) && narrationIsAccepted(string)) {
+                    this.debugPrintMessage(string);
+                    this.narrator.say(string, false); // never interrupt, losing chats to interrupts is sadness
+                }
+            });
         }
+
         // If the mixin was called with the right NarratorMode, then cancel the call to NarratorManager#onChatMessage
         ci.cancel();
     }
@@ -203,7 +199,7 @@ public abstract class NarratorManagerMixin implements Reloadable {
      * @param ci   {@link CallbackInfo} used by SpongePowered
      */
     @Inject(method = "narrate(Ljava/lang/String;)V", at = @At("HEAD"), cancellable = true)
-    public void onNarrate(final String text, final CallbackInfo ci) {
+    public void onNarrateNCM2(final String text, final CallbackInfo ci) {
 
         // If the narrator mode is not CUSTOM_NARRATION, exit and run the underlying Minecraft method
         if (!narratorModeIsCustomNarration()) {
@@ -258,7 +254,7 @@ public abstract class NarratorManagerMixin implements Reloadable {
 
     /**
      * Create the accepted narrations by combining the provided translations map with the configurations. See
-     * {@link #onInit(CallbackInfo)} for more details.
+     * {@link #onInitNCM2(CallbackInfo)} for more details.
      *
      * @param translations Map of keys and values such as in en_us.json
      * @return Translations combined and manipulated based on configurations

@@ -23,6 +23,7 @@
  */
 package com.casewalker.narratorconfigs.util;
 
+import com.casewalker.narratorconfigs.mixin.NarratorModeMixinNCM2;
 import net.minecraft.client.option.NarratorMode;
 
 /**
@@ -34,7 +35,7 @@ public class Util {
 
     /**
      * Use a hard-coded ID for the CUSTOM_NARRATION mode defined in {@link
-     * com.casewalker.narratorconfigs.mixin.NarratorModeMixin}.
+     * NarratorModeMixinNCM2}.
      *
      * The ID is set to be 29 so that if this mod is all alone, the new NarratorMode will be the 5th member of the enum
      * and {@link NarratorMode#byId(int)} should return the 5th element (index 4) when given ID 29. Or if somehow the
@@ -44,7 +45,7 @@ public class Util {
     public static final int CUSTOM_NARRATION_ID = 29;
 
     /**
-     * Get the CUSTOM_NARRATION mode defined in {@link com.casewalker.narratorconfigs.mixin.NarratorModeMixin}.
+     * Get the CUSTOM_NARRATION mode defined in {@link NarratorModeMixinNCM2}.
      *
      * @return The CUSTOM_NARRATION narrator mode
      */
