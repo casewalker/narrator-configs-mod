@@ -4,6 +4,7 @@
   "package": "com.casewalker.narratorconfigs.mixin",
   "compatibilityLevel": "JAVA_17",
   "client": [
+    "MessageHandlerMixinNCM2",
     "NarratorManagerMixinNCM2",
     "NarratorModeMixinNCM2",
     "TranslationStorageMixin"

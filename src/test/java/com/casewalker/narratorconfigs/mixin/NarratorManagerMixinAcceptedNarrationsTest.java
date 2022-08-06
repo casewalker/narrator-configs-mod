@@ -48,8 +48,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests on the {@link NarratorManagerMixinNCM2} for the {@link NarratorManagerMixinNCM2#pullTranslationsFromLanguage()} and
- * {@link NarratorManagerMixinNCM2#createAcceptedNarrations(Map)} functionality.
+ * Tests on the {@link NarratorManagerMixinNCM2} for the {@link NarratorManagerMixinNCM2#pullTranslationsFromLanguage()}
+ * and {@link NarratorManagerMixinNCM2#createAcceptedNarrations(Map)} functionality.
  *
  * @author Case Walker
  */

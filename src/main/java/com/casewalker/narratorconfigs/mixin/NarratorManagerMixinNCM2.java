@@ -27,17 +27,17 @@ import com.casewalker.modutils.config.ConfigHandler;
 import com.casewalker.narratorconfigs.config.NarratorConfigsModConfig;
 import com.casewalker.narratorconfigs.interfaces.AccessibleTranslationStorage;
 import com.casewalker.modutils.interfaces.Reloadable;
+import com.casewalker.narratorconfigs.interfaces.ForcedNarratorManagerNCM2;
 import com.casewalker.narratorconfigs.util.Util;
 import com.google.common.annotations.VisibleForTesting;
 import com.mojang.text2speech.Narrator;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.NarratorMode;
 import net.minecraft.client.resource.language.TranslationStorage;
 import net.minecraft.client.util.NarratorManager;
-import net.minecraft.network.message.MessageSender;
-import net.minecraft.network.message.MessageType;
 import net.minecraft.text.Text;
 import net.minecraft.util.Language;
-import org.jetbrains.annotations.Nullable;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -47,13 +47,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.casewalker.narratorconfigs.NarratorConfigsMod.LOGGER;
 import static com.casewalker.narratorconfigs.NarratorConfigsMod.MOD_NAME;
-import static net.minecraft.network.message.MessageType.NarrationRule.Kind.CHAT;
-import static net.minecraft.network.message.MessageType.NarrationRule.Kind.SYSTEM;
 
 /**
  * Mixin targeting the {@link NarratorManager} class to allow users to have more fine-grained control over what text is
@@ -74,16 +73,17 @@ import static net.minecraft.network.message.MessageType.NarrationRule.Kind.SYSTE
  * @author Case Walker
  */
 @Mixin(NarratorManager.class)
-public abstract class NarratorManagerMixinNCM2 implements Reloadable {
+public abstract class NarratorManagerMixinNCM2 implements ForcedNarratorManagerNCM2, Reloadable {
 
     @Shadow
+    @Final
     private Narrator narrator;
 
     @Shadow
     protected abstract void debugPrintMessage(String var1);
 
     @Shadow
-    private static NarratorMode getNarratorOption() {
+    private NarratorMode getNarratorOption() {
         throw new AssertionError("Shadowed method wrapper 'getNarratorOption' should not run");
     }
 
@@ -109,8 +109,8 @@ public abstract class NarratorManagerMixinNCM2 implements Reloadable {
     private ConfigHandler<NarratorConfigsModConfig> config;
 
     /**
-     * Inject custom logic at the end of {@link NarratorManager#NarratorManager()}. This logic will try to construct a
-     * set of acceptable narrations by:
+     * Inject custom logic at the end of {@link NarratorManager#NarratorManager(MinecraftClient)}. This logic will try
+     * to construct a set of acceptable narrations by:
      * <ul>
      *     <li>Filtering all translations by their keys to see if the key matches one of the configured enabled
      *     prefixes</li>
@@ -153,42 +153,28 @@ public abstract class NarratorManagerMixinNCM2 implements Reloadable {
     }
 
     /**
-     * Inject a narration override at the head of {@link
-     * NarratorManager#onChatMessage(MessageType, Text, MessageSender)}.
+     * Inject a narration override at the head of {@link NarratorManager#narrateChatMessage(Supplier)}.
      *
-     * @param type Metadata about the narration text
-     * @param message Text to optionally narrate from the Minecraft chat
-     * @param sender Unused parameter from NarratorManager
+     * @param messageSupplier Text (supplied) to optionally narrate from the Minecraft chat
      * @param ci {@link CallbackInfo} used by SpongePowered
      */
-    @Inject(method = "onChatMessage", at = @At("HEAD"), cancellable = true)
-    public void onOnChatMessageNCM2(
-            final MessageType type,
-            final Text message,
-            final @Nullable MessageSender sender,
-            final CallbackInfo ci) {
+    @Inject(method = "narrateChatMessage", at = @At("HEAD"), cancellable = true)
+    public void onNarrateChatMessageNCM2(final Supplier<Text> messageSupplier, final CallbackInfo ci) {
 
         // If the narrator mode is not CUSTOM_NARRATION, exit and run the underlying Minecraft method
         if (!narratorModeIsCustomNarration()) {
             return;
         }
 
-        // Code copied mostly verbatim from NarratorManager#onChatMessage
-        if (!this.narrator.active()) {
-            this.debugPrintMessage(message.getString());
-        } else {
-            type.narration().ifPresent((narrationRule) -> {
-                Text text2 = narrationRule.apply(message, sender);
-                String string = text2.getString();
-                if (narrationRule.kind().equals(CHAT) && config.get().isChatEnabled() ||
-                        narrationRule.kind().equals(SYSTEM) && narrationIsAccepted(string)) {
-                    this.debugPrintMessage(string);
-                    this.narrator.say(string, false); // never interrupt, losing chats to interrupts is sadness
-                }
-            });
+        // Copied mostly from NarratorManager#narrateChatMessage. TODO Why is there no 'this.narrator.active()' check?
+
+        if (config.get().isChatEnabled()) {
+            final String string = messageSupplier.get().getString();
+            this.debugPrintMessage(string);
+            this.narrator.say(string, false);
         }
 
-        // If the mixin was called with the right NarratorMode, then cancel the call to NarratorManager#onChatMessage
+        // If the mixin was called with the right NarratorMode, then cancel the call to narrateChatMessage
         ci.cancel();
     }
 
@@ -218,6 +204,18 @@ public abstract class NarratorManagerMixinNCM2 implements Reloadable {
         ci.cancel();
     }
 
+    @Override
+    public boolean forceNarrateOnMode(final Text text) {
+        final String string = text.getString();
+
+        if (narratorModeIsCustomNarration() && narrationIsAccepted(string)) {
+            this.narrator.say(text.getString(), false);
+            return true;
+        }
+        return false;
+    }
+
+
     /**
      * Reload accepted narrations in the event that when the class was instantiated, the {@link Language} was not
      * properly set, or the mod configuration file was updated and this class is being reloaded as its subscriber.
@@ -229,7 +227,7 @@ public abstract class NarratorManagerMixinNCM2 implements Reloadable {
         if (!narrator.active()) {
             debugPrintMessage("Updated configuration: " + config.get());
         } else {
-            narrator.say("Updated configuration: " + config.get(), false);
+            narrator.say("Narrator configuration has updated from the config file", false);
         }
     }
 
