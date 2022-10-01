@@ -271,9 +271,10 @@ public abstract class NarratorManagerMixinNCM2 implements ForcedNarratorManagerN
                 // escape all special characters in the language translations
                 .map(translation -> translation.replaceAll("([]\\[.()^$*+?{}|])", "\\\\$1"))
                 // replace all placeholders (accounting for escapes added above) like '%s' with the regex '.*'
-                .map(translation -> translation.replaceAll("%(\\d+[\\\\][$])?[sd]", ".*"))
-                // encase the string as a pattern with a beginning and end, then finally Pattern.compile() and collect
-                .map(translationPattern -> "^" + translationPattern + "$")
+                .map(translation -> translation.replaceAll("%(\\d+\\\\[$])?[sd]", ".*"))
+                // encase the string as a pattern with a beginning and a wildcard end
+                .map(translationPattern -> "^" + translationPattern + ".*")
+                // finally Pattern.compile() and collect
                 .map(Pattern::compile)
                 .collect(Collectors.toSet());
 

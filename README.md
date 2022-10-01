@@ -30,11 +30,17 @@ The mod expects to find a configuration file in the `config` directory (either `
 
 * `chatEnabled`: Whether standard user chat messages are enabled
 * `enabledPrefixes`: Using the language translation files, enable specific "key prefixes" to allow matching messages to
-be narrated
+be narrated (_if the text sent to the narrator begins with a translation, it should be narrated_)
 * `disabledPrefixes`: If a key-prefix is useful but too generic, this property can disable other/more specific
-key-prefixes
-* `enabledRegularExpressions`: If messages are not covered by keys in the language files, enable specific messages by
-providing the full regular expressions to match against
+key-prefixes (it can be used at the same time as `enabledPrefixes` and `enabledRegularExpressions`)
+* `enabledRegularExpressions`: If messages are not covered by keys in the language files or a user wants to control
+exactly what text-matches should get narrated, enable specific messages by providing the full regular expressions to
+match against
+
+> **_NOTE:_** The prefixes described above are found in the language files that come built-in in Minecraft. For
+> convenience, an example US-English language file is included in this repository under
+> [src/main/resources/language_examples/en_us.json](src/main/resources/language_examples/en_us.json)
+
 
 An example `YAML` configuration file:
 

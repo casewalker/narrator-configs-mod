@@ -195,7 +195,7 @@ class NarratorManagerMixinAcceptedNarrationsTest {
                 "Exact match should work");
         assertFalse(narratorManagerMixin.narrationIsAccepted(patterns, "abcIt should match this sentence"),
                 "Match with extra characters prepended should not work");
-        assertFalse(narratorManagerMixin.narrationIsAccepted(patterns, "It should match this sentence, well not now"),
-                "Match with extra characters post-fixed should not work");
+        assertTrue(narratorManagerMixin.narrationIsAccepted(patterns, "It should match this sentence, even now"),
+                "Match with extra characters post-fixed should work (after changes detected in 1.19.2)");
     }
 }
